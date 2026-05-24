@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bài 2: Các quy tắc an toàn trong phòng thực hành Vật lí</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .drag-item { cursor: grab; }
+        .drag-item:active { cursor: grabbing; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes flash {
+            0% { background-color: #fee2e2; }
+            50% { background-color: #fca5a5; }
+            100% { background-color: #fee2e2; }
+        }
+        .bg-flash-red { animation: flash 1s infinite; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div id="app" class="max-w-6xl mx-auto p-4 flex flex-col h-screen overflow-hidden relative">
+        
+        <transition name="fade">
+            <div v-if="toast.show" 
+                 class="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-xl text-white font-bold transition-all duration-300"
+                 :class="toast.isError ? 'bg-red-600' : 'bg-green-600'">
+                {{ toast.message }}
+            </div>
+        </transition>
+
+        <header class="bg-blue-700 text-white p-4 rounded-t-lg shadow-md flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold">VẬT LÍ 10 - BÀI 2</h1>
+                <p class="text-sm opacity-90">Các quy tắc an toàn trong phòng thực hành Vật lí</p>
+            </div>
+            <div class="hidden md:block font-semibold">
+                Chương I: Mở đầu
+            </div>
+        </header>
+
+        <nav class="bg-white shadow-md flex overflow-x-auto no-scrollbar rounded-b-lg mb-4">
+            <button v-for="(tab, index) in tabs" :key="index" 
+                @click="changeTab(index + 1)"
+                class="flex-1 py-3 px-4 font-semibold text-center border-b-4 transition-colors whitespace-nowrap"
+                :class="activeTab === index + 1 ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-gray-600 hover:bg-gray-100'">
+                {{ tab }}
+            </button>
+        </nav>
+
+        <main class="flex-1 overflow-y-auto bg-white rounded-lg shadow-md p-6 no-scrollbar relative">
+            
+            <div v-show="activeTab === 1" class="h-full flex flex-col">
+                <h2 class="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">🕹️ Hoạt động: Phân loại Hành vi</h2>
+                <p class="italic text-gray-600 mb-4">Kéo các thẻ hành vi bên dưới thả vào đúng cột "An toàn" hoặc "Nguy hiểm".</p>
+                
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg min-h-[120px] flex flex-wrap gap-2 border-2 border-dashed border-gray-300"
+                     @dragover.prevent @drop="drop('source')">
+                    <div v-for="item in sourceList" :key="item.id"
+                         draggable="true" @dragstart="dragStart(item, 'source')"
+                         class="drag-item bg-white border border-gray-300 shadow-sm px-3 py-2 rounded text-sm w-[calc(50%-0.5rem)] md:w-[calc(25%-0.5rem)] text-center font-medium hover:border-blue-400">
+                        {{ item.text }}
+                    </div>
+                    <div v-if="sourceList.length === 0" class="w-full text-center text-green-600 font-bold italic py-4">
+                        🎉 Chúc mừng! Bạn đã phân loại chính xác toàn bộ các hành vi!
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-6 flex-1">
+                    <div class="flex-1 bg-green-50 rounded-lg p-4 border-2 border-green-300 flex flex-col"
+                         @dragover.prevent @drop="drop('safe')">
+                        <h3 class="text-center font-bold text-green-700 mb-4 flex items-center justify-center gap-2">
+                            <span class="text-2xl">✅</span> HÀNH VI AN TOÀN
+                        </h3>
+                        <div class="flex-1 flex flex-col gap-2 min-h-[200px]">
+                            <div v-for="item in safeList" :key="item.id"
+                                 draggable="true" @dragstart="dragStart(item, 'safe')"
+                                 class="drag-item bg-white border-l-4 border-green-500 shadow-sm p-3 rounded text-sm font-medium">
+                                {{ item.text }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-red-50 rounded-lg p-4 border-2 border-red-300 flex flex-col"
+                         @dragover.prevent @drop="drop('unsafe')">
+                        <h3 class="text-center font-bold text-red-700 mb-4 flex items-center justify-center gap-2">
+                            <span class="text-2xl">⚠️</span> HÀNH VI NGUY HIỂM
+                        </h3>
+                        <div class="flex-1 flex flex-col gap-2 min-h-[200px]">
+                            <div v-for="item in unsafeList" :key="item.id"
+                                 draggable="true" @dragstart="dragStart(item, 'unsafe')"
+                                 class="drag-item bg-white border-l-4 border-red-500 shadow-sm p-3 rounded text-sm font-medium">
+                                {{ item.text }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-show="activeTab === 2">
+                <h2 class="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">📚 Hệ thống kiến thức trọng tâm</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+                            <h3 class="font-bold text-blue-800 mb-2">I. Các quy tắc an toàn cơ bản</h3>
+                            <ul class="list-disc ml-5 space-y-2 text-sm">
+                                <li><strong>An toàn điện:</strong> Không sử dụng thiết bị hỏng vỏ cách điện. Phải tắt nguồn, ngắt công tắc trước khi cắm/rút thiết bị.</li>
+                                <li><strong>An toàn nhiệt:</strong> Không chạm tay vào các thiết bị đang nung nóng.</li>
+                                <li><strong>An toàn quang học:</strong> Tuyệt đối không nhìn trực tiếp vào tia laser. Sử dụng kính bảo hộ khi được yêu cầu.</li>
+                                <li>Luôn tuân thủ tuyệt đối hướng dẫn của giáo viên khi tiến hành thí nghiệm.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+                            <h3 class="font-bold text-yellow-800 mb-3">II. Nhận diện Biển báo An toàn</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-12 h-12 rounded-full border-4 border-red-500 flex items-center justify-center bg-white text-xl font-bold text-black flex-shrink-0">✖</div>
+                                    <div>
+                                        <p class="font-bold text-sm">1. Biển báo CẤM</p>
+                                        <p class="text-xs text-gray-600">Hình tròn, viền đỏ, nền trắng, kí hiệu đen.</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <div class="w-12 h-12 border-b-[40px] border-b-yellow-400 border-l-[24px] border-l-transparent border-r-[24px] border-r-transparent relative flex-shrink-0">
+                                        <span class="absolute top-[10px] -left-[3px] font-bold text-black text-lg">!</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-sm">2. Biển CẢNH BÁO NGUY HIỂM</p>
+                                        <p class="text-xs text-gray-600">Hình tam giác đều, viền đen/đỏ, nền vàng (Ví dụ: ⚡ Cảnh báo điện cao áp, ☢️ Cảnh báo tia laser, 🔥 Cảnh báo nhiệt độ cao).</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-3">
+                                    <div class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl flex-shrink-0">!</div>
+                                    <div>
+                                        <p class="font-bold text-sm">3. Biển BẮT BUỘC THỰC HIỆN</p>
+                                        <p class="text-xs text-gray-600">Hình tròn, nền xanh dương, kí hiệu trắng (Ví dụ: Bắt buộc đeo kính bảo hộ).</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-show="activeTab === 3" class="h-full flex flex-col">
+                <h2 class="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">🔬 Mô phỏng An toàn Điện (Quá tải)</h2>
+                
+                <div class="bg-gray-50 p-4 rounded-lg mb-4 flex flex-col md:flex-row gap-6 items-center">
+                    <div class="flex-1 w-full">
+                        <label class="block font-bold mb-2">Điều chỉnh Cường độ dòng điện $I$ vào mạch:</label>
+                        <input type="range" v-model="currentI" min="0" max="10" step="0.1" class="w-full cursor-pointer accent-blue-600">
+                        <div class="flex justify-between text-sm text-gray-500 mt-1">
+                            <span>$0$ A</span>
+                            <span>$5$ A (Giới hạn Cầu chì)</span>
+                            <span>$10$ A</span>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full md:w-1/3 bg-white border p-3 rounded-lg text-center shadow-inner">
+                        <p class="text-sm text-gray-500 font-semibold mb-1">TRẠNG THÁI HỆ THỐNG</p>
+                        <p class="text-lg">Dòng điện: <span class="font-bold text-blue-600">{{ Number(currentI).toFixed(1) }}</span> A</p>
+                        <p class="text-lg mb-2">Nhiệt độ dây: <span class="font-bold" :class="isOverload ? 'text-red-600' : 'text-green-600'">{{ (25 + 2 * currentI * currentI).toFixed(1) }}</span> °C</p>
+                        
+                        <div v-if="!isOverload" class="bg-green-100 text-green-700 py-1 px-2 rounded text-sm font-bold border border-green-300">
+                            HỆ THỐNG AN TOÀN
+                        </div>
+                        <div v-else class="bg-flash-red text-red-700 py-1 px-2 rounded text-sm font-bold border border-red-500">
+                            CẢNH BÁO QUÁ TẢI (I > 5A)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 relative min-h-[300px]">
+                    <canvas id="myChart"></canvas>
+                </div>
+            </div>
+
+            <div v-show="activeTab === 4">
+                <h2 class="text-xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">📝 Trắc nghiệm Phản hồi sâu</h2>
+                
+                <div class="space-y-6">
+                    <div v-for="(q, qIndex) in questions" :key="q.id" class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                        <p class="font-bold text-gray-800 mb-3">Câu {{ qIndex + 1 }}: <span v-html="q.text"></span></p>
+                        
+                        <div class="flex flex-col gap-2">
+                            <button v-for="(opt, oIndex) in q.options" :key="oIndex"
+                                @click="selectOption(q.id, oIndex)"
+                                class="text-left px-4 py-2 border rounded-md transition-all duration-200"
+                                :class="getOptionClass(q, oIndex)">
+                                <span v-html="opt.text"></span>
+                            </button>
+                        </div>
+                        
+                        <div v-if="q.selected !== null" 
+                             class="mt-3 p-3 rounded-md text-sm border font-medium"
+                             :class="q.options[q.selected].isCorrect ? 'bg-green-100 border-green-400 text-green-800' : 'bg-red-100 border-red-400 text-red-800'">
+                            💡 <strong>Giải thích:</strong> <span v-html="q.options[q.selected].feedback"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+
+        createApp({
+            setup() {
+                const tabs = ['1. Khởi động', '2. Lý thuyết', '3. Mô phỏng', '4. Trắc nghiệm'];
+                const activeTab = ref(1);
+                let chartInstance = null;
+
+                // --- HÀM RENDER MATHJAX AN TOÀN ---
+                const triggerMathJax = () => {
+                    nextTick(() => {
+                        if (window.MathJax && MathJax.typesetClear) {
+                            MathJax.typesetClear();
+                            MathJax.typesetPromise().catch((err) => console.log(err.message));
+                        }
+                    });
+                };
+
+                const changeTab = (tabIndex) => {
+                    activeTab.value = tabIndex;
+                    triggerMathJax();
+                    if (tabIndex === 3 && chartInstance) {
+                        updateChart();
+                    }
+                };
+
+                // --- TAB 1: KÉO THẢ CÓ ĐIỀU KIỆN ---
+                const draggedItem = ref(null);
+                const toast = ref({ show: false, message: '', isError: false });
+                let toastTimer = null;
+
+                const showToast = (msg, isError = false) => {
+                    toast.value = { show: true, message: msg, isError };
+                    if (toastTimer) clearTimeout(toastTimer);
+                    toastTimer = setTimeout(() => { toast.value.show = false; }, 2500);
+                };
+
+                const sourceList = ref([
+                    { id: 1, text: 'Cầm vào phần vỏ nhựa cách điện của phích cắm khi rút điện.', type: 'safe' },
+                    { id: 2, text: 'Đeo kính bảo hộ chuyên dụng khi làm thí nghiệm với tia laser.', type: 'safe' },
+                    { id: 3, text: 'Báo cáo ngay cho giáo viên khi phát hiện dây điện bị hở.', type: 'safe' },
+                    { id: 4, text: 'Bố trí gọn gàng dây điện trên bàn thực hành.', type: 'safe' },
+                    { id: 5, text: 'Rút phích cắm điện bằng cách nắm chặt và kéo mạnh dây.', type: 'unsafe' },
+                    { id: 6, text: 'Dùng tay đang ướt để cắm phích điện vào ổ cắm.', type: 'unsafe' },
+                    { id: 7, text: 'Nhìn trực tiếp bằng mắt thường vào nguồn phát tia laser.', type: 'unsafe' },
+                    { id: 8, text: 'Hắt nước để dập lửa khi phát hiện mạch điện bị chập cháy.', type: 'unsafe' }
+                ].sort(() => Math.random() - 0.5));
+                const safeList = ref([]);
+                const unsafeList = ref([]);
+
+                const dragStart = (item, source) => { draggedItem.value = { item, source }; };
+                
+                const drop = (target) => {
+                    if (!draggedItem.value) return;
+                    const { item, source } = draggedItem.value;
+                    
+                    // --- ĐÃ BỔ SUNG: LOGIC KIỂM TRA ĐÚNG/SAI Ở ĐÂY ---
+                    if (target === 'safe' && item.type !== 'safe') {
+                        showToast('❌ Sai rồi! Đây là hành vi NGUY HIỂM, không thể để ở ô An toàn.', true);
+                        draggedItem.value = null; // Huỷ thao tác kéo
+                        return;
+                    }
+                    if (target === 'unsafe' && item.type !== 'unsafe') {
+                        showToast('❌ Sai rồi! Đây là hành vi AN TOÀN cơ mà.', true);
+                        draggedItem.value = null; // Huỷ thao tác kéo
+                        return;
+                    }
+
+                    // Nếu thả đúng cột (hoặc trả về thẻ nguồn)
+                    if (target !== 'source') {
+                        showToast('✅ Chính xác!', false);
+                    }
+                    
+                    // Thực hiện chuyển thẻ
+                    if (source === 'source') sourceList.value = sourceList.value.filter(i => i.id !== item.id);
+                    if (source === 'safe') safeList.value = safeList.value.filter(i => i.id !== item.id);
+                    if (source === 'unsafe') unsafeList.value = unsafeList.value.filter(i => i.id !== item.id);
+                    
+                    if (target === 'safe') safeList.value.push(item);
+                    if (target === 'unsafe') unsafeList.value.push(item);
+                    if (target === 'source') sourceList.value.push(item);
+                    
+                    draggedItem.value = null;
+                };
+
+                // --- TAB 3: MÔ PHỎNG CHART.JS ---
+                const currentI = ref(0);
+                const isOverload = computed(() => currentI.value > 5);
+
+                const initChart = () => {
+                    const ctx = document.getElementById('myChart').getContext('2d');
+                    chartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: Array.from({length: 101}, (_, i) => (i * 0.1).toFixed(1)),
+                            datasets: [{
+                                label: 'Đường cong nhiệt lượng toả ra',
+                                data: Array.from({length: 101}, (_, i) => 25 + 2 * Math.pow(i * 0.1, 2)),
+                                borderColor: '#16a34a',
+                                borderWidth: 3,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.4
+                            }, {
+                                label: 'Nhiệt độ hiện tại',
+                                data: [{x: 0, y: 25}],
+                                backgroundColor: '#15803d',
+                                pointRadius: 8,
+                                pointBorderColor: 'white',
+                                pointBorderWidth: 2,
+                                type: 'scatter'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: false,
+                            plugins: { legend: { position: 'top' }, tooltip: { enabled: false } },
+                            scales: {
+                                x: { title: { display: true, text: 'Cường độ dòng điện I (A)', font: {weight: 'bold'} }, type: 'linear', min: 0, max: 10 },
+                                y: { title: { display: true, text: 'Nhiệt độ dây dẫn T (°C)', font: {weight: 'bold'} }, min: 0, max: 250 }
+                            }
+                        }
+                    });
+                };
+
+                const updateChart = () => {
+                    if (!chartInstance) return;
+                    const iVal = parseFloat(currentI.value);
+                    const tVal = 25 + 2 * Math.pow(iVal, 2);
+                    
+                    chartInstance.data.datasets[1].data = [{x: iVal, y: tVal}];
+                    
+                    if (isOverload.value) {
+                        chartInstance.data.datasets[0].borderColor = '#dc2626';
+                        chartInstance.data.datasets[1].backgroundColor = '#b91c1c';
+                    } else {
+                        chartInstance.data.datasets[0].borderColor = '#16a34a';
+                        chartInstance.data.datasets[1].backgroundColor = '#15803d';
+                    }
+                    
+                    requestAnimationFrame(() => {
+                        chartInstance.update('none');
+                    });
+                };
+
+                watch(currentI, () => { updateChart(); });
+
+                // --- TAB 4: TRẮC NGHIỆM ---
+                const questions = ref([
+                    {
+                        id: 1,
+                        text: 'Biển báo có hình tam giác đều, viền đen (hoặc viền đỏ), nền vàng là loại biển báo gì?',
+                        options: [
+                            { text: 'A. Biển báo cấm.', isCorrect: false, feedback: 'Bẫy: Biển báo cấm có hình tròn, viền đỏ, nền trắng.' },
+                            { text: 'B. Biển cảnh báo nguy hiểm.', isCorrect: true, feedback: 'Đúng: Đây là dấu hiệu nhận diện chuẩn của biển cảnh báo nguy hiểm trong phòng thí nghiệm.' },
+                            { text: 'C. Biển báo bắt buộc.', isCorrect: false, feedback: 'Bẫy: Biển bắt buộc có hình tròn, nền xanh dương.' },
+                            { text: 'D. Biển thông tin.', isCorrect: false, feedback: 'Bẫy: Biển thông tin thường có hình chữ nhật hoặc hình vuông.' }
+                        ],
+                        selected: null
+                    },
+                    {
+                        id: 2,
+                        text: 'Khi làm thí nghiệm với nguồn phát tia laser, quy tắc an toàn quan trọng nhất là gì?',
+                        options: [
+                            { text: 'A. Không được để tia laser chiếu trực tiếp vào mắt.', isCorrect: true, feedback: 'Đúng: Tổn thương võng mạc do laser cường độ cao là không thể phục hồi.' },
+                            { text: 'B. Không được cầm trực tiếp vào vỏ đèn laser.', isCorrect: false, feedback: 'Bẫy: Vỏ đèn laser là nơi an toàn được thiết kế để người dùng cầm nắm.' },
+                            { text: 'C. Phải đeo găng tay cách điện dày.', isCorrect: false, feedback: 'Bẫy: Nguồn phát laser quang học phổ thông thường chạy bằng pin nhỏ, điện áp thấp, không có nguy cơ giật điện cao áp.' },
+                            { text: 'D. Chỉ được phép sử dụng trong phòng tối hoàn toàn.', isCorrect: false, feedback: 'Bẫy: Laser có thể dùng ở điều kiện ánh sáng bình thường miễn là đảm bảo không chiếu vào mắt.' }
+                        ],
+                        selected: null
+                    },
+                    {
+                        id: 3,
+                        text: 'Đang tiến hành thực hành, thiết bị điện trên bàn đột nhiên bốc khói và có mùi khét. Thao tác ĐẦU TIÊN em cần làm là gì?',
+                        options: [
+                            { text: 'A. Hô hoán lớn và lấy nước hắt ngay vào thiết bị để dập lửa.', isCorrect: false, feedback: 'Bẫy chí mạng: Nước lã dẫn điện rất tốt. Hắt nước vào thiết bị điện đang cắm nguồn sẽ gây điện giật và nổ lớn.' },
+                            { text: 'B. Ngắt ngay cầu dao (aptomat) của phòng thí nghiệm.', isCorrect: true, feedback: 'Đúng: Nguyên tắc số 1 trong tai nạn điện là phải cô lập (ngắt) nguồn điện trước khi thực hiện các biện pháp cứu hộ.' },
+                            { text: 'C. Dùng bình chữa cháy CO2 xịt trực tiếp vào thiết bị.', isCorrect: false, feedback: 'Bẫy: Đây là bước thứ 2 sau khi cắt điện. Nếu chưa ngắt điện mà xịt chữa cháy thì dòng điện vẫn chập, đám cháy có thể bùng lại.' },
+                            { text: 'D. Bỏ chạy ngay ra khỏi phòng để đảm bảo an toàn tính mạng.', isCorrect: false, feedback: 'Bẫy: Sự cố nhỏ cần được xử lý ngắt nguồn ngay, nếu bỏ chạy mà không ngắt điện sẽ gây hỏa hoạn phá hủy diện rộng.' }
+                        ],
+                        selected: null
+                    },
+                    {
+                        id: 4,
+                        text: 'Bạn Nam dùng tay đang ướt để cắm phích cắm của một thiết bị vào ổ điện $220V$. Nhận định nào sau đây phân tích ĐÚNG nguy cơ mất an toàn vật lí?',
+                        options: [
+                            { text: 'A. Không nguy hiểm vì phần vỏ phích cắm được làm bằng nhựa cách điện.', isCorrect: false, feedback: 'Bẫy: Dù vỏ nhựa cách điện, nhưng nước trên tay có thể chảy lan vào phần kim loại của phích cắm gây rò rỉ điện.' },
+                            { text: 'B. Nước làm giảm điện trở của da người, khiến dòng điện dễ dàng truyền qua cơ thể gây điện giật nguy hiểm.', isCorrect: true, feedback: 'Đúng: Da khô có điện trở lớn. Khi ướt, điện trở giảm đột ngột, dòng điện qua cơ thể người $I = \\frac{U}{R}$ sẽ tăng vọt gây sốc điện.' },
+                            { text: 'C. Nước làm tăng điện trở của tay, gây đoản mạch và hỏng thiết bị.', isCorrect: false, feedback: 'Bẫy: Nước có lẫn tạp chất là chất dẫn điện tốt, nó làm "giảm" chứ không phải làm "tăng" điện trở của da người.' },
+                            { text: 'D. Nước sẽ làm hỏng ổ cắm điện nhưng không gây nguy hiểm cho người cắm.', isCorrect: false, feedback: 'Bẫy: Nước ở ổ cắm tạo đường dẫn dòng điện truyền trực tiếp từ ổ cắm sang tay người.' }
+                        ],
+                        selected: null
+                    }
+                ]);
+
+                const selectOption = (qId, optIdx) => {
+                    const q = questions.value.find(q => q.id === qId);
+                    if (q.selected === null) {
+                        q.selected = optIdx;
+                        triggerMathJax();
+                    }
+                };
+
+                const getOptionClass = (q, oIndex) => {
+                    if (q.selected === null) return 'bg-white hover:bg-gray-100 border-gray-300';
+                    if (q.selected === oIndex) {
+                        return q.options[oIndex].isCorrect ? 'bg-green-500 text-white border-green-600' : 'bg-red-500 text-white border-red-600';
+                    }
+                    if (q.options[oIndex].isCorrect) return 'bg-green-100 border-green-500 text-green-800'; 
+                    return 'bg-gray-100 border-gray-200 opacity-50'; 
+                };
+
+                onMounted(() => {
+                    initChart();
+                    triggerMathJax();
+                });
+
+                return {
+                    tabs, activeTab, changeTab,
+                    sourceList, safeList, unsafeList, dragStart, drop,
+                    toast,
+                    currentI, isOverload,
+                    questions, selectOption, getOptionClass
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
